@@ -1,0 +1,60 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15
+    container_name: talaveratest_db
+    environment:
+      POSTGRES_DB: talaveratest
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/database/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - talaveratest_network
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: talaveratest_api
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/talaveratest
+      JWT_SECRET: your-super-secret-jwt-key
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - talaveratest_network
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: talaveratest_web
+    environment:
+      VITE_API_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - talaveratest_network
+
+volumes:
+  postgres_data:
+
+networks:
+  talaveratest_network:
+    driver: bridge

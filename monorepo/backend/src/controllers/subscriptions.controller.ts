@@ -9,6 +9,88 @@ export class SubscriptionsController {
     this.subscriptionsService = new SubscriptionsService();
   }
 
+  async updateCurrentSubscription(
+    req: AuthRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      console.log(
+        "🎯 SubscriptionsController: PUT /api/subscriptions/current - START"
+      );
+      console.log("📋 Request body:", req.body);
+      console.log("📋 Request user:", req.user);
+
+      const userId = req.user?.id;
+      const { plan_id, status } = req.body;
+
+      if (!userId) {
+        console.log("❌ User not authenticated");
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated",
+        });
+        return;
+      }
+
+      console.log(
+        `🎯 SubscriptionsController: PUT /api/subscriptions/current - User ${userId}`
+      );
+      console.log(`📋 Update data: plan_id=${plan_id}, status=${status}`);
+
+      // Si se proporciona un nuevo plan_id, cambiar de plan
+      if (plan_id) {
+        console.log(`📋 Changing plan to ${plan_id}`);
+        const subscription = await this.subscriptionsService.changePlan(
+          userId,
+          plan_id
+        );
+        res.status(200).json({
+          success: true,
+          data: subscription,
+          message: "Subscription plan updated successfully",
+        });
+        return;
+      }
+
+      // Si se proporciona un status, actualizar estado
+      if (status) {
+        console.log(`📋 Updating status to ${status}`);
+        const subscription = await this.subscriptionsService.updateStatus(
+          userId,
+          status
+        );
+        res.status(200).json({
+          success: true,
+          data: subscription,
+          message: "Subscription status updated successfully",
+        });
+        return;
+      }
+
+      console.log("❌ No update parameters provided");
+      res.status(400).json({
+        success: false,
+        message: "No update parameters provided (plan_id or status required)",
+      });
+    } catch (error) {
+      console.error(
+        "❌ Error in SubscriptionsController.updateCurrentSubscription:",
+        error
+      );
+      console.error(
+        "❌ Error stack:",
+        error instanceof Error ? error.stack : "No stack trace"
+      );
+      res.status(500).json({
+        success: false,
+        message: "Failed to update subscription",
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: process.env.NODE_ENV === "development" ? error : undefined,
+      });
+    }
+  }
+
+  // ... resto de métodos existentes sin cambios ...
   async subscribe(req: AuthRequest, res: Response): Promise<void> {
     try {
       const userId = req.user?.id;

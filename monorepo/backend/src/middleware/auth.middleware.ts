@@ -8,9 +8,12 @@ export const authMiddleware = (
   next: NextFunction
 ): void => {
   try {
+    console.log("🔐 Auth middleware: Checking authentication...");
+
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
+      console.log("❌ Auth middleware: No authorization header");
       res.status(401).json({
         success: false,
         message: "Authorization header missing",
@@ -21,6 +24,7 @@ export const authMiddleware = (
     const token = authHeader.split(" ")[1]; // Bearer TOKEN
 
     if (!token) {
+      console.log("❌ Auth middleware: No token in header");
       res.status(401).json({
         success: false,
         message: "Token missing",
@@ -28,7 +32,9 @@ export const authMiddleware = (
       return;
     }
 
-    const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+    const JWT_SECRET =
+      process.env.JWT_SECRET ||
+      "your-super-secret-jwt-key-change-this-in-production";
     const decoded = jwt.verify(token, JWT_SECRET) as any;
 
     req.user = {
@@ -36,7 +42,9 @@ export const authMiddleware = (
       email: decoded.email,
     };
 
-    console.log(`🔐 Auth middleware: User ${decoded.id} authenticated`);
+    console.log(
+      `✅ Auth middleware: User ${decoded.id} (${decoded.email}) authenticated`
+    );
     next();
   } catch (error) {
     console.error("❌ Auth middleware error:", error);
@@ -47,34 +55,4 @@ export const authMiddleware = (
   }
 };
 
-// Middleware opcional para rutas que no requieren autenticación obligatoria
-export const optionalAuthMiddleware = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-): void => {
-  try {
-    const authHeader = req.headers.authorization;
-
-    if (authHeader) {
-      const token = authHeader.split(" ")[1];
-
-      if (token) {
-        const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
-
-        req.user = {
-          id: decoded.id,
-          email: decoded.email,
-        };
-
-        console.log(`🔐 Optional auth: User ${decoded.id} authenticated`);
-      }
-    }
-
-    next();
-  } catch (error) {
-    console.log("🔐 Optional auth: Token invalid, continuing without user");
-    next();
-  }
-};
+export default authMiddleware;

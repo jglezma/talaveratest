@@ -1,22 +1,6 @@
 import { Response } from "express";
-import { z } from "zod";
 import { ProjectsService } from "../services/projects.service";
-import { AuthenticatedRequest } from "../middleware/auth.middleware";
-
-const createProjectSchema = z.object({
-  title: z.string().min(1, "Title is required").max(255, "Title too long"),
-  description: z.string().optional(),
-});
-
-const updateProjectSchema = z.object({
-  title: z
-    .string()
-    .min(1, "Title cannot be empty")
-    .max(255, "Title too long")
-    .optional(),
-  description: z.string().optional(),
-  status: z.enum(["active", "inactive", "completed"]).optional(),
-});
+import { AuthRequest } from "../types";
 
 export class ProjectsController {
   private projectsService: ProjectsService;
@@ -25,187 +9,235 @@ export class ProjectsController {
     this.projectsService = new ProjectsService();
   }
 
-  getProjects = async (
-    req: AuthenticatedRequest,
-    res: Response
-  ): Promise<void> => {
+  async getProjects(req: AuthRequest, res: Response): Promise<void> {
     try {
-      if (!req.user) {
-        res.status(401).json({ error: "User not authenticated" });
+      const userId = req.user?.id;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated",
+        });
         return;
       }
 
-      const projects = await this.projectsService.getUserProjects(
-        req.user.userId
-      );
+      console.log(`🎯 ProjectsController: GET /api/projects - User ${userId}`);
 
-      res.json({
-        message: "Projects retrieved successfully",
+      const projects = await this.projectsService.getProjects(userId);
+
+      res.status(200).json({
+        success: true,
         data: projects,
+        message: "Projects retrieved successfully",
       });
+
+      console.log(
+        `✅ ProjectsController: Retrieved ${projects.length} projects`
+      );
     } catch (error) {
+      console.error("❌ Error in ProjectsController.getProjects:", error);
       res.status(500).json({
-        error:
-          error instanceof Error ? error.message : "Failed to get projects",
+        success: false,
+        message: "Failed to retrieve projects",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  };
+  }
 
-  getProject = async (
-    req: AuthenticatedRequest,
-    res: Response
-  ): Promise<void> => {
+  async createProject(req: AuthRequest, res: Response): Promise<void> {
     try {
-      if (!req.user) {
-        res.status(401).json({ error: "User not authenticated" });
+      const userId = req.user?.id;
+      const { title, description, status } = req.body;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated",
+        });
         return;
       }
 
-      const projectId = parseInt(req.params.id);
-      if (isNaN(projectId)) {
-        res.status(400).json({ error: "Invalid project ID" });
+      if (!title || title.trim().length === 0) {
+        res.status(400).json({
+          success: false,
+          message: "Title is required",
+        });
         return;
       }
 
-      const project = await this.projectsService.getProjectById(
-        projectId,
-        req.user.userId
+      console.log(`🎯 ProjectsController: POST /api/projects - User ${userId}`);
+      console.log(
+        `📁 Project data: title="${title}", description="${description}"`
       );
 
-      if (!project) {
-        res.status(404).json({ error: "Project not found" });
-        return;
-      }
-
-      res.json({
-        message: "Project retrieved successfully",
-        data: project,
+      const project = await this.projectsService.createProject(userId, {
+        title,
+        description,
+        status,
       });
-    } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get project",
-      });
-    }
-  };
-
-  createProject = async (
-    req: AuthenticatedRequest,
-    res: Response
-  ): Promise<void> => {
-    try {
-      if (!req.user) {
-        res.status(401).json({ error: "User not authenticated" });
-        return;
-      }
-
-      const validatedData = createProjectSchema.parse(req.body);
-      const project = await this.projectsService.createProject(
-        req.user.userId,
-        validatedData
-      );
 
       res.status(201).json({
-        message: "Project created successfully",
+        success: true,
         data: project,
+        message: "Project created successfully",
       });
+
+      console.log(
+        `✅ ProjectsController: Project created with ID ${project.id}`
+      );
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({
-          error: "Validation error",
-          details: error.errors,
+      console.error("❌ Error in ProjectsController.createProject:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to create project",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  async getProject(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      const projectId = parseInt(req.params.id);
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated",
         });
         return;
       }
 
-      res.status(400).json({
-        error:
-          error instanceof Error ? error.message : "Failed to create project",
-      });
-    }
-  };
-
-  updateProject = async (
-    req: AuthenticatedRequest,
-    res: Response
-  ): Promise<void> => {
-    try {
-      if (!req.user) {
-        res.status(401).json({ error: "User not authenticated" });
-        return;
-      }
-
-      const projectId = parseInt(req.params.id);
       if (isNaN(projectId)) {
-        res.status(400).json({ error: "Invalid project ID" });
+        res.status(400).json({
+          success: false,
+          message: "Invalid project ID",
+        });
         return;
       }
 
-      const validatedData = updateProjectSchema.parse(req.body);
-      const project = await this.projectsService.updateProject(
-        projectId,
-        req.user.userId,
-        validatedData
+      console.log(
+        `🎯 ProjectsController: GET /api/projects/${projectId} - User ${userId}`
       );
+
+      const project = await this.projectsService.getProject(projectId, userId);
 
       if (!project) {
-        res.status(404).json({ error: "Project not found" });
-        return;
-      }
-
-      res.json({
-        message: "Project updated successfully",
-        data: project,
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({
-          error: "Validation error",
-          details: error.errors,
+        res.status(404).json({
+          success: false,
+          message: "Project not found",
         });
         return;
       }
 
-      res.status(400).json({
-        error:
-          error instanceof Error ? error.message : "Failed to update project",
-      });
-    }
-  };
-
-  deleteProject = async (
-    req: AuthenticatedRequest,
-    res: Response
-  ): Promise<void> => {
-    try {
-      if (!req.user) {
-        res.status(401).json({ error: "User not authenticated" });
-        return;
-      }
-
-      const projectId = parseInt(req.params.id);
-      if (isNaN(projectId)) {
-        res.status(400).json({ error: "Invalid project ID" });
-        return;
-      }
-
-      const deleted = await this.projectsService.deleteProject(
-        projectId,
-        req.user.userId
-      );
-
-      if (!deleted) {
-        res.status(404).json({ error: "Project not found" });
-        return;
-      }
-
-      res.json({
-        message: "Project deleted successfully",
+      res.status(200).json({
+        success: true,
+        data: project,
+        message: "Project retrieved successfully",
       });
     } catch (error) {
-      res.status(400).json({
-        error:
-          error instanceof Error ? error.message : "Failed to delete project",
+      console.error("❌ Error in ProjectsController.getProject:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve project",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  };
+  }
+
+  async updateProject(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      const projectId = parseInt(req.params.id);
+      const { title, description, status } = req.body;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated",
+        });
+        return;
+      }
+
+      if (isNaN(projectId)) {
+        res.status(400).json({
+          success: false,
+          message: "Invalid project ID",
+        });
+        return;
+      }
+
+      console.log(
+        `🎯 ProjectsController: PUT /api/projects/${projectId} - User ${userId}`
+      );
+
+      const project = await this.projectsService.updateProject(
+        projectId,
+        userId,
+        {
+          title,
+          description,
+          status,
+        }
+      );
+
+      res.status(200).json({
+        success: true,
+        data: project,
+        message: "Project updated successfully",
+      });
+
+      console.log(`✅ ProjectsController: Project ${projectId} updated`);
+    } catch (error) {
+      console.error("❌ Error in ProjectsController.updateProject:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update project",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  async deleteProject(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      const projectId = parseInt(req.params.id);
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated",
+        });
+        return;
+      }
+
+      if (isNaN(projectId)) {
+        res.status(400).json({
+          success: false,
+          message: "Invalid project ID",
+        });
+        return;
+      }
+
+      console.log(
+        `🎯 ProjectsController: DELETE /api/projects/${projectId} - User ${userId}`
+      );
+
+      await this.projectsService.deleteProject(projectId, userId);
+
+      res.status(200).json({
+        success: true,
+        message: "Project deleted successfully",
+      });
+
+      console.log(`✅ ProjectsController: Project ${projectId} deleted`);
+    } catch (error) {
+      console.error("❌ Error in ProjectsController.deleteProject:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to delete project",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
 }

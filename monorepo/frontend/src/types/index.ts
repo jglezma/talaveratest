@@ -20,23 +20,43 @@ export interface Plan {
   id: number;
   name: string;
   description: string;
-  price: number;
-  features: string[];
-  billingPeriod: "monthly" | "yearly";
-  recommended?: boolean;
+  price: number; // Asegurar que es number
+  features: string[]; // Asegurar que es array
+  billing_period: "monthly" | "yearly";
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface AuthResponse {
-  user: User;
-  token: string;
+export interface Subscription {
+  id: number;
+  user_id: number;
+  plan_id: number;
+  status: "active" | "cancelled" | "expired" | "trialing";
+  trial_ends_at?: string;
+  current_period_start: string;
+  current_period_end: string;
+  created_at: string;
+  updated_at: string;
+  plan?: Plan; // Opcional, puede incluir los detalles del plan
 }
 
-export interface ApiResponse<T> {
-  message: string;
-  data: T;
+export interface Invoice {
+  id: number;
+  user_id: number;
+  subscription_id: number;
+  amount: number; // Asegurar que es number
+  status: "pending" | "paid" | "failed" | "cancelled";
+  billing_period_start: string;
+  billing_period_end: string;
+  payment_date?: string;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface ApiError {
-  error: string;
-  details?: any;
+export interface Usage {
+  projects_used: number;
+  projects_limit: number | null; // null = unlimited
+  storage_used: number; // en MB
+  storage_limit: number; // en MB
 }

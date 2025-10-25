@@ -1,78 +1,113 @@
+import { SubscriptionRepository } from "../repositories/subscription.repository";
 import { PlanRepository } from "../repositories/plan.repository";
-import { InvoiceRepository } from "../repositories/invoice.repository";
-import { Plan, Invoice, CreateSubscriptionRequest } from "../types";
-import { PlansAdapter } from "../adapters/plans.adapter";
+import { Subscription } from "../types";
 
 export class SubscriptionsService {
+  private subscriptionRepository: SubscriptionRepository;
   private planRepository: PlanRepository;
-  private invoiceRepository: InvoiceRepository;
 
   constructor() {
+    this.subscriptionRepository = new SubscriptionRepository();
     this.planRepository = new PlanRepository();
-    this.invoiceRepository = new InvoiceRepository();
   }
 
-  async getPlans(): Promise<any[]> {
-    const plans = await this.planRepository.findAll();
-    return plans.map((plan) => PlansAdapter.formatPlanForAPI(plan));
-  }
-
-  async createSubscription(
-    userId: number,
-    subscriptionData: CreateSubscriptionRequest
-  ): Promise<Invoice> {
-    const { plan_id } = subscriptionData;
-
-    // Verificar que el plan existe y está activo
-    const plan = await this.planRepository.findActiveById(plan_id);
-    if (!plan) {
-      throw new Error("Plan not found or inactive");
-    }
-
-    // Crear la factura
-    const invoice = await this.invoiceRepository.create(
-      userId,
-      subscriptionData,
-      plan.price
-    );
-
-    // Simular procesamiento de pago
+  async subscribe(userId: number, planId: number): Promise<Subscription> {
     try {
-      const paymentResult = await PlansAdapter.processPayment(
-        plan_id,
-        userId,
-        plan.price
+      console.log(
+        `📋 SubscriptionsService: Creating subscription for user ${userId} to plan ${planId}`
       );
 
-      if (paymentResult.success) {
-        // Actualizar estado a pagado
-        const updatedInvoice = await this.invoiceRepository.updateStatus(
-          invoice.id,
-          "paid"
-        );
-        return updatedInvoice || invoice;
-      } else {
-        // Actualizar estado a fallido
-        await this.invoiceRepository.updateStatus(invoice.id, "failed");
-        throw new Error(paymentResult.error || "Payment processing failed");
+      // Verificar que el plan existe
+      const plan = await this.planRepository.findById(planId);
+      if (!plan) {
+        throw new Error("Plan not found");
       }
+
+      // Cancelar suscripción activa si existe
+      const existingSubscription =
+        await this.subscriptionRepository.findByUserId(userId);
+      if (existingSubscription) {
+        console.log("📋 Cancelling existing subscription");
+        await this.subscriptionRepository.updateStatus(
+          existingSubscription.id,
+          "cancelled"
+        );
+      }
+
+      // Calcular fechas del período
+      const currentPeriodStart = new Date();
+      const currentPeriodEnd = new Date();
+
+      if (plan.billing_period === "monthly") {
+        currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+      } else if (plan.billing_period === "yearly") {
+        currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+      }
+
+      // Crear nueva suscripción con trial de 7 días
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 7);
+
+      const subscription = await this.subscriptionRepository.create({
+        user_id: userId,
+        plan_id: planId,
+        status: "trialing",
+        trial_ends_at: trialEndsAt,
+        current_period_start: currentPeriodStart,
+        current_period_end: currentPeriodEnd,
+      });
+
+      console.log("✅ Subscription created successfully");
+      return subscription;
     } catch (error) {
-      // En caso de error, marcar como fallido
-      await this.invoiceRepository.updateStatus(invoice.id, "failed");
+      console.error("❌ Error in SubscriptionsService.subscribe:", error);
       throw error;
     }
   }
 
-  async getUserSubscriptions(userId: number): Promise<Invoice[]> {
-    return this.invoiceRepository.findByUserId(userId);
+  async getCurrentSubscription(userId: number): Promise<Subscription | null> {
+    try {
+      return await this.subscriptionRepository.findByUserId(userId);
+    } catch (error) {
+      console.error(
+        "❌ Error in SubscriptionsService.getCurrentSubscription:",
+        error
+      );
+      throw error;
+    }
   }
 
-  async cancelSubscription(
-    userId: number,
-    planId: number
-  ): Promise<{ success: boolean }> {
-    // Mock cancelación usando el adapter
-    const result = await PlansAdapter.cancelSubscription(userId, planId);
-    return result;
+  async getAllSubscriptions(userId: number): Promise<Subscription[]> {
+    try {
+      return await this.subscriptionRepository.findAllByUserId(userId);
+    } catch (error) {
+      console.error(
+        "❌ Error in SubscriptionsService.getAllSubscriptions:",
+        error
+      );
+      throw error;
+    }
+  }
+
+  async cancelSubscription(userId: number): Promise<Subscription> {
+    try {
+      const subscription = await this.subscriptionRepository.findByUserId(
+        userId
+      );
+      if (!subscription) {
+        throw new Error("No active subscription found");
+      }
+
+      return await this.subscriptionRepository.updateStatus(
+        subscription.id,
+        "cancelled"
+      );
+    } catch (error) {
+      console.error(
+        "❌ Error in SubscriptionsService.cancelSubscription:",
+        error
+      );
+      throw error;
+    }
   }
 }

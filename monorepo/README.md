@@ -1,379 +1,410 @@
-### Estructura del Proyecto
+# TalaveraTest - Full Stack Application
 
-La estructura del proyecto será la siguiente:
+A modern full-stack application built with Node.js, Express, TypeScript, React, and PostgreSQL in a monorepo structure.
+
+## 🏗️ Project Structure
 
 ```
-/monorepo
-│
-├── /backend
-│   ├── /src
-│   │   ├── /controllers
-│   │   ├── /services
-│   │   ├── /repos
-│   │   ├── /models
-│   │   ├── /migrations
-│   │   ├── /tests
-│   │   ├── app.ts
-│   │   └── server.ts
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── .env
-│
-├── /frontend
-│   ├── /src
-│   ├── package.json
-│   └── ...
-│
-├── docker-compose.yml
-└── package.json
+talaveratest/
+├── backend/                 # Express.js API server
+│   ├── src/
+│   │   ├── controllers/     # Route controllers
+│   │   ├── services/        # Business logic
+│   │   ├── database/        # Database connection and migrations
+│   │   ├── middleware/      # Custom middleware
+│   │   ├── routes/          # API routes
+│   │   └── types/          # TypeScript type definitions
+│   └── tests/              # Backend tests (Cucumber BDD)
+├── frontend/               # React application
+│   ├── src/
+│   │   ├── components/     # React components
+│   │   ├── pages/          # Page components
+│   │   ├── services/       # API service layer
+│   │   └── stores/         # State management
+├── docker-compose.yml      # Docker orchestration
+└── package.json           # Monorepo configuration
 ```
 
-### Paso 1: Crear el Monorepo
+## 🚀 Features
 
-1. **Crea la carpeta del proyecto:**
+- **Authentication System**: JWT-based auth with signup/signin
+- **Project Management**: CRUD operations for user projects
+- **Subscription System**: Multiple subscription plans with billing
+- **Database Migrations**: Automated PostgreSQL setup
+- **Testing**: Cucumber BDD tests for API endpoints
+- **Docker Support**: Complete containerization
+- **TypeScript**: Strict typing throughout the application
+- **Monorepo**: Unified dependency management
 
-   ```bash
-   mkdir monorepo
-   cd monorepo
-   ```
+## 📋 Prerequisites
 
-2. **Inicializa el monorepo:**
+- **Node.js** (v18 or higher)
+- **Docker** and **Docker Compose**
+- **npm** or **yarn**
 
-   ```bash
-   npm init -y
-   ```
+## 🛠️ Quick Start
 
-3. **Crea las carpetas para el backend y frontend:**
+### 1. Clone and Setup
 
-   ```bash
-   mkdir backend frontend
-   ```
+```bash
+# Clone the repository
+git clone <repository-url>
+cd talaveratest
 
-### Paso 2: Configurar el Backend
+# Install all dependencies (backend + frontend)
+npm run setup
+```
 
-1. **Crea el `package.json` para el backend:**
+### 2. Environment Configuration
 
-   Navega a la carpeta `backend` y ejecuta:
+```bash
+# Copy environment files
+cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
 
-   ```bash
-   cd backend
-   npm init -y
-   ```
+### 3. Start with Docker (Recommended)
 
-   Luego, instala las dependencias necesarias:
+```bash
+# Start all services (database, backend, frontend)
+npm run docker:up
 
-   ```bash
-   npm install express bcrypt jsonwebtoken pg prisma
-   npm install --save-dev typescript ts-node @types/node @types/express @types/bcrypt @types/jsonwebtoken
-   ```
+# Services will be available at:
+# - Frontend: http://localhost:3000
+# - Backend API: http://localhost:3001
+# - PostgreSQL: localhost:5432
+```
 
-2. **Crea el archivo `tsconfig.json`:**
+### 4. Alternative: Local Development
 
-   ```json
-   {
-     "compilerOptions": {
-       "target": "ES2020",
-       "module": "commonjs",
-       "strict": true,
-       "esModuleInterop": true,
-       "skipLibCheck": true,
-       "forceConsistentCasingInFileNames": true,
-       "outDir": "./dist"
-     },
-     "include": ["src/**/*"],
-     "exclude": ["node_modules", "dist"]
-   }
-   ```
+```bash
+# Start only the database
+docker-compose up -d db
 
-3. **Crea la estructura de carpetas:**
+# Wait for database to be ready
+sleep 15
 
-   ```bash
-   mkdir src src/controllers src/services src/repos src/models src/migrations src/tests
-   ```
+# Initialize database
+cd backend && npm run init-db
 
-4. **Crea el archivo `app.ts`:**
+# Start backend (in one terminal)
+npm run dev
 
-   ```typescript
-   import express from 'express';
-   import dotenv from 'dotenv';
+# Start frontend (in another terminal)
+cd ../frontend && npm run dev
+```
 
-   dotenv.config();
+## 🔧 Database Setup
 
-   const app = express();
-   app.use(express.json());
+The application uses PostgreSQL with automated migrations:
 
-   // Rutas aquí
+```bash
+# Check database connection
+cd backend && npm run check-db
 
-   export default app;
-   ```
+# Reset database (if needed)
+npm run reset-db
 
-5. **Crea el archivo `server.ts`:**
+# Initialize database with migrations
+npm run init-db
 
-   ```typescript
-   import app from './app';
+# Or do both at once
+npm run setup-db
+```
 
-   const PORT = process.env.PORT || 3000;
+## 📡 API Endpoints
 
-   app.listen(PORT, () => {
-     console.log(`Server is running on port ${PORT}`);
-   });
-   ```
+### Authentication
 
-### Paso 3: Configurar Prisma
+```
+POST /api/auth/signup      # User registration
+POST /api/auth/signin      # User login
+GET  /api/auth/profile     # Get user profile (requires auth)
+```
 
-1. **Inicializa Prisma:**
+### Projects
 
-   ```bash
-   npx prisma init
-   ```
+```
+GET    /api/projects       # Get user projects (requires auth)
+POST   /api/projects       # Create project (requires auth)
+GET    /api/projects/:id   # Get specific project (requires auth)
+PUT    /api/projects/:id   # Update project (requires auth)
+DELETE /api/projects/:id   # Delete project (requires auth)
+```
 
-2. **Configura el archivo `.env`:**
+### Subscriptions
+
+```
+GET  /api/plans                    # Get available plans
+POST /api/subscriptions            # Subscribe to plan (requires auth)
+GET  /api/subscriptions/invoices   # Get user invoices (requires auth)
+```
+
+### Health Check
+
+```
+GET /health                # API health status
+```
+
+## 🧪 Testing the API
+
+### Basic Health Check
+
+```bash
+curl http://localhost:3001/health
+```
+
+### Get Available Plans
 
-   ```env
-   DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
-   ```
+```bash
+curl http://localhost:3001/api/plans
+```
 
-3. **Define el esquema en `prisma/schema.prisma`:**
+### Register a New User
 
-   ```prisma
-   datasource db {
-     provider = "postgresql"
-     url      = env("DATABASE_URL")
-   }
+```bash
+curl -X POST http://localhost:3001/api/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "password123",
+    "name": "Test User"
+  }'
+```
 
-   generator client {
-     provider = "prisma-client-js"
-   }
+### Login
 
-   model User {
-     id    Int    @id @default(autoincrement())
-     email String @unique
-     // otros campos...
-   }
+```bash
+curl -X POST http://localhost:3001/api/auth/signin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "password123"
+  }'
+```
 
-   model Project {
-     id      Int    @id @default(autoincrement())
-     userId  Int
-     user    User   @relation(fields: [userId], references: [id])
-     // otros campos...
-   }
+### Use the JWT Token
 
-   model Plan {
-     id    Int    @id @default(autoincrement())
-     // otros campos...
-   }
+```bash
+# Replace YOUR_JWT_TOKEN with the token from login response
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  http://localhost:3001/api/auth/profile
+```
 
-   model Invoice {
-     id    Int    @id @default(autoincrement())
-     // otros campos...
-   }
-   ```
+## 🧪 Running Tests
 
-4. **Ejecuta las migraciones:**
+### Backend Tests (Cucumber BDD)
 
-   ```bash
-   npx prisma migrate dev --name init
-   ```
+```bash
+cd backend
+npm run test:cucumber
+```
 
-### Paso 4: Implementar Autenticación y CRUD
+### Unit Tests
 
-1. **Crea los controladores, servicios y repositorios necesarios.**
+```bash
+cd backend
+npm run test
+```
 
-   - **Controlador de autenticación (`src/controllers/authController.ts`):**
+### Watch Mode
 
-     ```typescript
-     import { Request, Response } from 'express';
-     import bcrypt from 'bcrypt';
-     import jwt from 'jsonwebtoken';
+```bash
+cd backend
+npm run test:watch
+```
 
-     export const signup = async (req: Request, res: Response) => {
-       // Lógica de registro
-     };
+## 📦 Available Scripts
 
-     export const signin = async (req: Request, res: Response) => {
-       // Lógica de inicio de sesión
-     };
-     ```
+### Root Level
 
-   - **Controlador de proyectos (`src/controllers/projectController.ts`):**
+```bash
+npm run setup          # Install all dependencies
+npm run docker:up      # Start all services with Docker
+npm run docker:down    # Stop all services
+npm run dev           # Start backend and frontend in development
+```
 
-     ```typescript
-     import { Request, Response } from 'express';
+### Backend
 
-     export const createProject = async (req: Request, res: Response) => {
-       // Lógica para crear un proyecto
-     };
+```bash
+npm run dev           # Start development server
+npm run build         # Build for production
+npm run start         # Start production server
+npm run check-db      # Test database connection
+npm run reset-db      # Reset database
+npm run init-db       # Initialize database
+npm run setup-db      # Reset and initialize database
+npm run test          # Run unit tests
+npm run test:cucumber # Run BDD tests
+```
 
-     export const getProjects = async (req: Request, res: Response) => {
-       // Lógica para obtener proyectos
-     };
-     ```
+### Frontend
 
-   - **Controlador de planes (`src/controllers/planController.ts`):**
+```bash
+npm run dev           # Start development server
+npm run build         # Build for production
+npm run preview       # Preview production build
+```
 
-     ```typescript
-     import { Request, Response } from 'express';
+## 🐳 Docker Commands
 
-     export const getPlans = async (req: Request, res: Response) => {
-       // Lógica para obtener planes
-     };
+### Basic Operations
 
-     export const createSubscription = async (req: Request, res: Response) => {
-       // Lógica para crear una suscripción
-     };
-     ```
+```bash
+# Start all services
+docker-compose up -d
 
-2. **Configura las rutas en `app.ts`:**
+# View logs
+docker-compose logs -f
 
-   ```typescript
-   import authRoutes from './routes/authRoutes';
-   import projectRoutes from './routes/projectRoutes';
-   import planRoutes from './routes/planRoutes';
+# Stop all services
+docker-compose down
 
-   app.use('/api/auth', authRoutes);
-   app.use('/api/projects', projectRoutes);
-   app.use('/api/plans', planRoutes);
-   ```
+# Reset everything (including data)
+docker-compose down -v
+```
 
-3. **Crea las rutas correspondientes en `src/routes`:**
+### Individual Services
 
-   - **Rutas de autenticación (`src/routes/authRoutes.ts`):**
+```bash
+# Start only database
+docker-compose up -d db
 
-     ```typescript
-     import { Router } from 'express';
-     import { signup, signin } from '../controllers/authController';
+# Start only backend
+docker-compose up -d api
 
-     const router = Router();
+# Start only frontend
+docker-compose up -d web
+```
 
-     router.post('/signup', signup);
-     router.post('/signin', signin);
+## 🗄️ Database Schema
 
-     export default router;
-     ```
+The application includes these main tables:
 
-   - **Rutas de proyectos (`src/routes/projectRoutes.ts`):**
+- **users**: User accounts with authentication
+- **projects**: User projects with CRUD operations
+- **plans**: Subscription plans (Basic, Pro, Enterprise)
+- **invoices**: Billing and subscription tracking
+- **migrations**: Database migration history
 
-     ```typescript
-     import { Router } from 'express';
-     import { createProject, getProjects } from '../controllers/projectController';
+### Sample Data
 
-     const router = Router();
+The system comes with 3 predefined subscription plans:
 
-     router.post('/', createProject);
-     router.get('/', getProjects);
+- **Basic** ($9.99/month): 1 project, basic support, 1GB storage
+- **Pro** ($19.99/month): 5 projects, priority support, 10GB storage
+- **Enterprise** ($49.99/month): Unlimited projects, 24/7 support, 100GB storage
 
-     export default router;
-     ```
+## 🔧 Environment Variables
 
-   - **Rutas de planes (`src/routes/planRoutes.ts`):**
+### Backend (.env)
 
-     ```typescript
-     import { Router } from 'express';
-     import { getPlans, createSubscription } from '../controllers/planController';
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=talaveratest
+DB_USER=postgres
+DB_PASSWORD=postgres
+JWT_SECRET=your-super-secret-jwt-key
+PORT=3001
+NODE_ENV=development
+```
 
-     const router = Router();
+### Frontend (.env)
 
-     router.get('/', getPlans);
-     router.post('/subscriptions', createSubscription);
+```env
+VITE_API_URL=http://localhost:3001
+```
 
-     export default router;
-     ```
+## 🚨 Troubleshooting
 
-### Paso 5: Configurar Docker
+### Port Already in Use
 
-1. **Crea el archivo `docker-compose.yml`:**
+```bash
+# Check what's using the port
+lsof -i :3001  # for backend
+lsof -i :3000  # for frontend
+lsof -i :5432  # for database
 
-   ```yaml
-   version: '3.8'
+# Kill the process
+kill -9 <PID>
+```
 
-   services:
-     db:
-       image: postgres:15
-       environment:
-         POSTGRES_USER: user
-         POSTGRES_PASSWORD: password
-         POSTGRES_DB: mydb
-       ports:
-         - "5432:5432"
+### Database Connection Issues
 
-     backend:
-       build:
-         context: ./backend
-       ports:
-         - "3000:3000"
-       depends_on:
-         - db
-       environment:
-         DATABASE_URL: "postgresql://user:password@db:5432/mydb"
+```bash
+# Check if PostgreSQL is running
+docker-compose ps
 
-     frontend:
-       build:
-         context: ./frontend
-       ports:
-         - "3001:3000"
-   ```
+# View database logs
+docker-compose logs db
 
-### Paso 6: Configurar Pruebas
+# Reset database completely
+docker-compose down -v
+docker-compose up -d db
+sleep 15
+cd backend && npm run init-db
+```
 
-1. **Crea el esqueleto de los archivos de prueba en `src/tests`:**
+### Clear Everything and Restart
 
-   - **Archivo de prueba de autenticación (`src/tests/auth.feature`):**
+```bash
+# Stop everything
+docker-compose down -v
 
-     ```gherkin
-     Feature: Auth
+# Remove node_modules
+rm -rf node_modules backend/node_modules frontend/node_modules
 
-     Scenario: Signup
-       Given I have a valid email and password
-       When I send a signup request
-       Then I should receive a success response
+# Reinstall dependencies
+npm run setup
 
-     Scenario: Signin
-       Given I have a valid email and password
-       When I send a signin request
-       Then I should receive a JWT token
-     ```
+# Start fresh
+npm run docker:up
+```
 
-   - **Archivo de prueba de proyectos (`src/tests/projects.feature`):**
+## 📚 Technology Stack
 
-     ```gherkin
-     Feature: Projects
+### Backend
 
-     Scenario: Create Project
-       Given I am authenticated
-       When I create a new project
-       Then I should see the project in the list
+- **Express.js 4** - Web framework
+- **TypeScript** - Type safety
+- **PostgreSQL** - Database
+- **JWT** - Authentication
+- **bcryptjs** - Password hashing
+- **Zod** - Schema validation
+- **Helmet** - Security middleware
+- **CORS** - Cross-origin requests
 
-     Scenario: Get Projects
-       Given I have projects in the database
-       When I request the list of projects
-       Then I should receive a list of projects
-     ```
+### Frontend
 
-   - **Archivo de prueba de suscripciones (`src/tests/subscriptions.feature`):**
+- **React 18** - UI framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool
+- **Zustand** - State management
+- **Axios** - HTTP client
 
-     ```gherkin
-     Feature: Subscriptions
+### Development
 
-     Scenario: Get Plans
-       When I request the list of plans
-       Then I should receive a list of plans
+- **Docker & Docker Compose** - Containerization
+- **Jest** - Unit testing
+- **Cucumber** - BDD testing
+- **ESLint** - Code linting
+- **Prettier** - Code formatting
 
-     Scenario: Create Subscription
-       Given I have a valid plan
-       When I create a subscription
-       Then I should see the subscription in the list
-     ```
+## 🔄 Development Workflow
 
-### Paso 7: Ejecutar el Proyecto
+1. **Start the database**: `docker-compose up -d db`
+2. **Run migrations**: `cd backend && npm run init-db`
+3. **Start backend**: `npm run dev`
+4. **Start frontend**: `cd frontend && npm run dev`
+5. **Make changes and test**
+6. **Run tests**: `npm run test`
+7. **Build for production**: `npm run build`
 
-1. **Construir y ejecutar los contenedores:**
+## 📝 License
 
-   Desde la raíz del monorepo, ejecuta:
+This project is licensed under the MIT License.
 
-   ```bash
-   docker-compose up --build
-   ```
-
-### Conclusión
-
-Con estos pasos, has creado un monorepo que incluye un backend estructurado en capas con Express y TypeScript, autenticación, CRUD para proyectos, simulaciones de planes y un esqueleto para pruebas. Puedes expandir cada parte según sea necesario y agregar más funcionalidades y pruebas a medida que avanzas en el desarrollo.
+**Happy coding! 🚀**

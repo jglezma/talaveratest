@@ -7,6 +7,7 @@ export default defineConfig({
     port: 3000,
     host: "0.0.0.0",
     strictPort: true,
+    open: true, // Abrir automáticamente en el navegador
   },
   preview: {
     port: 3000,

@@ -8,7 +8,7 @@ export class DatabaseHelper {
       // Limpiar la base de datos
       await this.cleanTestDB();
 
-      // Crear las tablas básicas (sin ejecutar todas las migraciones)
+      // Crear las tablas básicas
       await this.createTestTables();
 
       // Insertar datos de prueba
@@ -36,6 +36,36 @@ export class DatabaseHelper {
       console.log("✅ Test database cleaned");
     } catch (error) {
       console.error("❌ Error cleaning test database:", error);
+      throw error;
+    }
+  }
+
+  static async cleanProjects(): Promise<void> {
+    try {
+      await pool.query("DELETE FROM projects;");
+      console.log("🧹 Projects cleaned");
+    } catch (error) {
+      console.error("❌ Error cleaning projects:", error);
+      throw error;
+    }
+  }
+
+  static async cleanUsers(): Promise<void> {
+    try {
+      await pool.query("DELETE FROM users WHERE email != 'test@example.com';");
+      console.log("🧹 Users cleaned (keeping test user)");
+    } catch (error) {
+      console.error("❌ Error cleaning users:", error);
+      throw error;
+    }
+  }
+
+  static async cleanSubscriptions(): Promise<void> {
+    try {
+      await pool.query("DELETE FROM subscriptions WHERE user_id != 1;");
+      console.log("🧹 Subscriptions cleaned");
+    } catch (error) {
+      console.error("❌ Error cleaning subscriptions:", error);
       throw error;
     }
   }
@@ -95,6 +125,23 @@ export class DatabaseHelper {
         );
       `);
 
+      // Triggers
+      await pool.query(`
+        DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+        CREATE TRIGGER update_users_updated_at 
+          BEFORE UPDATE ON users
+          FOR EACH ROW 
+          EXECUTE FUNCTION update_updated_at_column();
+      `);
+
+      await pool.query(`
+        DROP TRIGGER IF EXISTS update_projects_updated_at ON projects;
+        CREATE TRIGGER update_projects_updated_at 
+          BEFORE UPDATE ON projects
+          FOR EACH ROW 
+          EXECUTE FUNCTION update_updated_at_column();
+      `);
+
       console.log("✅ Test tables created");
     } catch (error) {
       console.error("❌ Error creating test tables:", error);
@@ -126,6 +173,79 @@ export class DatabaseHelper {
     } catch (error) {
       console.error("❌ Error inserting test data:", error);
       throw error;
+    }
+  }
+
+  static async createTestUser(userData: {
+    email: string;
+    name: string;
+    password_hash: string;
+  }): Promise<number> {
+    try {
+      const result = await pool.query(
+        "INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id",
+        [userData.email, userData.name, userData.password_hash]
+      );
+      return result.rows[0].id;
+    } catch (error) {
+      console.error("❌ Error creating test user:", error);
+      throw error;
+    }
+  }
+
+  static async getTableRowCount(tableName: string): Promise<number> {
+    try {
+      const result = await pool.query(`SELECT COUNT(*) FROM ${tableName}`);
+      return parseInt(result.rows[0].count);
+    } catch (error) {
+      console.error(`❌ Error counting rows in ${tableName}:`, error);
+      throw error;
+    }
+  }
+
+  static async executeRawQuery(
+    query: string,
+    params: any[] = []
+  ): Promise<any> {
+    try {
+      return await pool.query(query, params);
+    } catch (error) {
+      console.error("❌ Error executing raw query:", error);
+      throw error;
+    }
+  }
+
+  static async createTestSubscription(
+    userId: number,
+    planId: number
+  ): Promise<number> {
+    try {
+      const result = await pool.query(
+        `
+        INSERT INTO subscriptions (user_id, plan_id, status, current_period_start, current_period_end)
+        VALUES ($1, $2, 'trialing', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '1 month')
+        RETURNING id
+      `,
+        [userId, planId]
+      );
+      return result.rows[0].id;
+    } catch (error) {
+      console.error("❌ Error creating test subscription:", error);
+      throw error;
+    }
+  }
+
+  static async waitForDatabaseOperation(
+    operation: () => Promise<any>,
+    maxRetries = 5
+  ): Promise<any> {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (i === maxRetries - 1) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 100 * (i + 1)));
+      }
     }
   }
 

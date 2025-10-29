@@ -22,7 +22,18 @@
     "test:setup": "npm run test:db:setup",
     "test:simple": "NODE_ENV=test jest src/tests/simple.test.ts",
     "test:db:setup": "NODE_ENV=test ts-node src/tests/helpers/setup-test-db.ts",
-    "test:db:create": "psql -U postgres -c 'CREATE DATABASE talaveratest_test;' || echo 'Database may already exist'"
+    "test:auth": "NODE_ENV=test jest auth.controller.test.ts",
+    "test:projects": "NODE_ENV=test jest projects.controller.test.ts",
+    "test:middleware": "NODE_ENV=test jest middleware",
+    "test:integration": "NODE_ENV=test jest --testPathPattern='(auth|projects|plans).controller.test.ts'",
+    "test:unit": "NODE_ENV=test jest --testPathPattern='middleware.*test.ts'",
+    "test:db:create": "psql -U postgres -c 'CREATE DATABASE talaveratest_test;' || echo 'Database may already exist'",
+    "test:e2e": "NODE_ENV=test jest --testPathPattern='e2e'",
+    "test:security": "NODE_ENV=test jest --testPathPattern='security'",
+    "test:performance": "NODE_ENV=test jest --testPathPattern='performance'",
+    "test:advanced": "NODE_ENV=test jest --testPathPattern='(security|performance|e2e)'",
+    "test:bail": "NODE_ENV=test jest --bail",
+    "test:ci": "NODE_ENV=test jest --ci --coverage --watchAll=false"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
